@@ -1,4 +1,4 @@
-           import streamlit as st
+import streamlit as st
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 import asyncio
@@ -6,13 +6,11 @@ import edge_tts
 import os
 import re
 
-# Page Configuration
 st.set_page_config(page_title="GLC Movie Recap Automation AI", page_icon="🎬", layout="wide")
 
 st.title("🎬 GLC Movie Recap Automation AI Dashboard")
 st.caption("YouTube Link မှတစ်ဆင့် Copyright လွတ် မြန်မာ Script၊ AI Prompts နှင့် Voice များ ထုတ်လုပ်ပေးသည့် စနစ် (Advanced Subtitle-Free Mode)")
 
-# Sidebar - API Configuration & Inputs
 st.sidebar.header("⚙️ Configuration Settings")
 api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password", value=os.environ.get("GEMINI_API_KEY", ""))
 
@@ -55,19 +53,16 @@ def get_video_id(url):
 
 def get_youtube_transcript(video_id):
     try:
-        # Exact API function with capital T
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'my'])
         full_transcript = " ".join([t['text'] for t in transcript_list])
         return full_transcript, True
     except Exception as e:
-        # If subtitles fail, we return the error message but label it as False (No Subtitles)
         return f"No Subtitles Found (Error: {str(e)})", False
 
 async def generate_voice(text, voice_name, output_filename):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_filename)
 
-# Main Dashboard Interface
 video_link = st.text_input("🔗 Paste YouTube Video Link Here:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.button("🚀 Process & Generate Recap Package"):
@@ -81,20 +76,16 @@ if st.button("🚀 Process & Generate Recap Package"):
         if not video_id:
             st.error("Invalid YouTube Link Layout. Please check the URL.")
         else:
-            # 1. Try to fetch transcript
             with st.spinner("📥 Extracting transcript/subtitles from YouTube video..."):
                 source_data, has_subtitles = get_youtube_transcript(video_id)
                 
-            # Configure Gemini API Fallback
             if not api_key:
                 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
             
-            # 2. Process with Gemini
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
                 try:
                     model = genai.GenerativeModel('gemini-1.5-pro')
                     
-                    # Core System Prompt
                     base_prompt = f"""
                     You are an expert AI YouTube Movie Recap Scriptwriter for the digital brand "GLC Entertainment".
                     Your task is to write a highly engaging, dramatic, and thrilling movie recap script in Burmese.
@@ -114,7 +105,6 @@ if st.button("🚀 Process & Generate Recap Package"):
                         full_prompt = f"{base_prompt}\n\nHere is the source transcript to completely rewrite and transform:\n{source_data}"
                     else:
                         st.info("ℹ️ Note: This video has no English subtitles. Activating 'Auto-Story Search Backup Mode' using the Video ID.")
-                        # Advanced instruction to let Gemini search its knowledge base for the specific YouTube Video ID/Movie
                         full_prompt = f"""
                         {base_prompt}
                         
@@ -124,7 +114,6 @@ if st.button("🚀 Process & Generate Recap Package"):
                         If you cannot pinpoint the exact video, generate a highly thrilling and generic action/thriller/horror movie recap script that fits a YouTube recap format perfectly.
                         """
                     
-                    # Generate response from Gemini
                     response = model.generate_content(full_prompt)
                     ai_output = response.text
                     
@@ -149,7 +138,6 @@ if st.button("🚀 Process & Generate Recap Package"):
                         st.markdown(f"### 🖼️ AI Photo/Video Prompts ({video_size})")
                         st.text_area("Use these prompts in Midjourney/Imagen/Runway:", value=prompt_section, height=400)
                     
-                    # 3. Audio Voice Generation
                     st.markdown("---")
                     st.subheader("🔊 AI Audio Voice Generation")
                     
@@ -159,7 +147,6 @@ if st.button("🚀 Process & Generate Recap Package"):
                         selected_voice = voice_mapping[voice_option]
                         output_audio_path = "glc_recap_voice.mp3"
                         
-                        # Limit text to 2000 chars for a smooth response
                         asyncio.run(generate_voice(clean_burmese_text[:2000], selected_voice, output_audio_path))
                         
                         if os.path.exists(output_audio_path):
@@ -178,4 +165,3 @@ if st.button("🚀 Process & Generate Recap Package"):
                             
                 except Exception as e:
                     st.error(f"Error during AI Processing: {str(e)}")
-             
