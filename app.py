@@ -65,7 +65,7 @@ async def generate_voice(text, voice_name, output_filename):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_filename)
 
-# Main Form Implementation
+# Main Dashboard Interface
 video_link = st.text_input("🔗 Paste YouTube Video Link Here:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.button("🚀 Process & Generate Recap Package"):
@@ -86,10 +86,16 @@ if st.button("🚀 Process & Generate Recap Package"):
                 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
             
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
+                # UNIVERSAL BACKUP PROTECTION FOR GEMINI MODELS
                 try:
-                    # CRITICAL FIX: Explicitly using the official model identifier string
                     model = genai.GenerativeModel('gemini-1.5-pro')
-                    
+                    # Just a test call to see if it causes 404
+                    test_response = model.generate_content("test")
+                except Exception as model_err:
+                    # If 1.5-pro fails with 404, switch instantly to 1.5-flash which is widely compatible
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                try:
                     base_prompt = f"""
                     You are an expert AI YouTube Movie Recap Scriptwriter for the digital brand "GLC Entertainment".
                     Your task is to write a highly engaging, dramatic, and thrilling movie recap script in Burmese.
