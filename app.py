@@ -6,11 +6,13 @@ import edge_tts
 import os
 import re
 
+# Page Configuration
 st.set_page_config(page_title="GLC Movie Recap Automation AI", page_icon="🎬", layout="wide")
 
 st.title("🎬 GLC Movie Recap Automation AI Dashboard")
 st.caption("YouTube Link မှတစ်ဆင့် Copyright လွတ် မြန်မာ Script၊ AI Prompts နှင့် Voice များ ထုတ်လုပ်ပေးသည့် စနစ် (Advanced Subtitle-Free Mode)")
 
+# Sidebar - API Configuration & Inputs
 st.sidebar.header("⚙️ Configuration Settings")
 api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password", value=os.environ.get("GEMINI_API_KEY", ""))
 
@@ -63,6 +65,7 @@ async def generate_voice(text, voice_name, output_filename):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_filename)
 
+# Main Form Implementation
 video_link = st.text_input("🔗 Paste YouTube Video Link Here:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.button("🚀 Process & Generate Recap Package"):
@@ -84,7 +87,7 @@ if st.button("🚀 Process & Generate Recap Package"):
             
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
                 try:
-                    # FIXED MODEL NAME BELOW
+                    # CRITICAL FIX: Explicitly using the official model identifier string
                     model = genai.GenerativeModel('gemini-1.5-pro')
                     
                     base_prompt = f"""
