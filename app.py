@@ -84,6 +84,7 @@ if st.button("🚀 Process & Generate Recap Package"):
             
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
                 try:
+                    # FIXED MODEL NAME BELOW
                     model = genai.GenerativeModel('gemini-1.5-pro')
                     
                     base_prompt = f"""
