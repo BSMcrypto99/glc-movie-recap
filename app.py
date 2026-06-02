@@ -86,14 +86,31 @@ if st.button("🚀 Process & Generate Recap Package"):
                 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
             
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
-                # UNIVERSAL BACKUP PROTECTION FOR GEMINI MODELS
-                try:
-                    model = genai.GenerativeModel('gemini-1.5-pro')
-                    # Just a test call to see if it causes 404
-                    test_response = model.generate_content("test")
-                except Exception as model_err:
-                    # If 1.5-pro fails with 404, switch instantly to 1.5-flash which is widely compatible
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                # --- CRITICAL UNIVERSAL MODEL LOADING BLOCK ---
+                model = None
+                model_errors = []
+                
+                # အလုပ်လုပ်နိုင်ချေရှိမယ့် Model String ပုံစံအားလုံးကို တစ်ခုချင်းစီ စမ်းခေါ်မယ့်စနစ်
+                candidate_names = ["gemini-1.5-pro", "gemini-1.5-flash", "models/gemini-1.5-pro", "models/gemini-1.5-flash", "gemini-pro"]
+                
+                for model_name in candidate_names:
+                    try:
+                        test_model = genai.GenerativeModel(model_name)
+                        # Test call with a minimal token to bypass 404 validation completely
+                        test_model.generate_content("ping")
+                        model = test_model
+                        break  # အောင်မြင်တာနဲ့ ပတ်တာကို ရပ်လိုက်မယ်
+                    except Exception as e:
+                        model_errors.append(f"{model_name}: {str(e)}")
+                
+                # တကယ်လို့ အပေါ်က စမ်းသပ်ချက်အားလုံး မအောင်မြင်ရင် Default ဆွဲခေါ်မယ်
+                if model is None:
+                    try:
+                        model = genai.GenerativeModel("gemini-1.5-flash")
+                    except:
+                        st.error("⚠️ API Key/Model Connection Error. Please verify your Google AI Studio credentials.")
+                # ----------------------------------------------
                 
                 try:
                     base_prompt = f"""
