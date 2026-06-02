@@ -19,18 +19,19 @@ api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password", value=
 if api_key:
     genai.configure(api_key=api_key)
 else:
-    st.sidebar.warning("⚠️ Please enter your Gemini API Key to proceed.")
+    if os.environ.get("GEMINI_API_KEY"):
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    else:
+        st.sidebar.warning("⚠️ Please enter your Gemini API Key to proceed.")
 
 st.sidebar.markdown("---")
 st.sidebar.header("📹 Video & Audio Options")
 
-# Video Size Selection
 video_size = st.sidebar.selectbox(
     "Select Video Size (Aspect Ratio):",
     options=["16:9 (YouTube Standard)", "9:16 (TikTok/Shorts/Reels)", "1:1 (Square)"]
 )
 
-# AI Voice Selection (Edge-TTS Free Burmese Voices)
 voice_option = st.sidebar.selectbox(
     "Select AI Voice (Myanmar):",
     options=["မြန်မာအမျိုးသမီးသံ (Thiha)", "မြန်မာအမျိုးသားသံ (Khin)"]
@@ -41,37 +42,39 @@ voice_mapping = {
     "မြန်မာအမျိုးသားသံ (Khin)": "my-MM-KhinNeural"
 }
 
-# Function to extract Video ID from YouTube Link
 def get_video_id(url):
-    video_id = None
-    # Regular expression to find YouTube Video ID
-    regex = r'(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^#\&\?]+)'
-    match = re.match(regex, url)
+    # Fixed regex to capture all types of YouTube URLs properly
+    regex = r'(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/|youtube\.com/live/)([^#\&\?]+)'
+    match = re.search(regex, url)
     if match:
-        video_id = match.group(4)
-    return video_id
+        return match.group(4)
+    # If standard regex fails, look for v= parameter directly
+    if "v=" in url:
+        return url.split("v=")[1].split("&")[0]
+    # If shared shortened link format
+    if "youtu.be/" in url:
+        return url.split("youtu.be/")[1].split("?")[0]
+    return None
 
-# Function to get Transcript from YouTube
 def get_youtube_transcript(video_id):
     try:
+        # Crucial Fix: Using 'get_transcript' exactly with capital T as required by package
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'my'])
-        
         full_transcript = " ".join([t['text'] for t in transcript_list])
         return full_transcript
     except Exception as e:
         return f"Error fetching transcript: {str(e)}"
 
-# Function to generate Text-to-Speech using Edge-TTS
 async def generate_voice(text, voice_name, output_filename):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_filename)
 
-# Main Form Implementation
+# Main Dashboard Interface
 video_link = st.text_input("🔗 Paste YouTube Video Link Here:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.button("🚀 Process & Generate Recap Package"):
-    if not api_key:
-        st.error("Please provide a valid Gemini API Key in the sidebar.")
+    if not api_key and not os.environ.get("GEMINI_API_KEY"):
+        st.error("Please provide a valid Gemini API Key.")
     elif not video_link:
         st.error("Please paste a YouTube link first.")
     else:
@@ -92,7 +95,6 @@ if st.button("🚀 Process & Generate Recap Package"):
                 with st.expander("📄 View Raw English Transcript"):
                     st.write(raw_transcript)
                 
-                # Setup Gemini Model Prompting
                 with st.spinner("🤖 AI is rewriting into Anti-Copyright Burmese Script & generating Prompts..."):
                     try:
                         model = genai.GenerativeModel('gemini-1.5-pro')
@@ -113,12 +115,10 @@ if st.button("🚀 Process & Generate Recap Package"):
                         response = model.generate_content(full_prompt)
                         ai_output = response.text
                         
-                        # Parsing AI Output
                         st.subheader("✨ Generated Output Package")
                         
-                        # Splitting script and prompts if formatting matches
                         script_section = ai_output
-                        prompt_section = "AI Prompts generated inside the text above."
+                        prompt_section = "AI Prompts generated inside the text."
                         
                         if "[BURMESE SCRIPT FOR TTS]" in ai_output:
                             parts = ai_output.split("[AI VIDEO/PHOTO PROMPTS]")
@@ -126,7 +126,7 @@ if st.button("🚀 Process & Generate Recap Package"):
                             if len(parts) > 1:
                                 prompt_section = parts[1].strip()
                         
-                        col1, col2 = os.sys.modules['streamlit'].columns(2)
+                        col1, col2 = st.columns(2)
                         
                         with col1:
                             st.markdown("### 📝 Copyright-Free Burmese Script")
@@ -136,19 +136,16 @@ if st.button("🚀 Process & Generate Recap Package"):
                             st.markdown(f"### 🖼️ AI Photo/Video Prompts ({video_size})")
                             st.text_area("Use these prompts in Midjourney/Imagen/Runway:", value=prompt_section, height=400)
                         
-                        # Audio Generation Section
                         st.markdown("---")
                         st.subheader("🔊 AI Audio Voice Generation")
                         
-                        # Extract clean Burmese text for TTS (removing markdown if any)
                         clean_burmese_text = re.sub(r'\[.*?\]', '', script_section).strip()
                         
                         with st.spinner("🎙️ Generating high-quality Burmese audio file..."):
                             selected_voice = voice_mapping[voice_option]
                             output_audio_path = "glc_recap_voice.mp3"
                             
-                            # Run async edge-tts function
-                            asyncio.run(generate_voice(clean_burmese_text[:2000], selected_voice, output_audio_path)) # limited to 2000 chars for safety
+                            asyncio.run(generate_voice(clean_burmese_text[:2000], selected_voice, output_audio_path))
                             
                             if os.path.exists(output_audio_path):
                                 st.success(f"✅ Audio generated successfully using {voice_option}!")
@@ -166,4 +163,5 @@ if st.button("🚀 Process & Generate Recap Package"):
                                 
                     except Exception as e:
                         st.error(f"Error during AI Processing: {str(e)}")
+
 
