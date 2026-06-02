@@ -65,7 +65,7 @@ async def generate_voice(text, voice_name, output_filename):
     communicate = edge_tts.Communicate(text, voice_name)
     await communicate.save(output_filename)
 
-# Main Dashboard Interface
+# Main Form Implementation
 video_link = st.text_input("🔗 Paste YouTube Video Link Here:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.button("🚀 Process & Generate Recap Package"):
@@ -86,33 +86,17 @@ if st.button("🚀 Process & Generate Recap Package"):
                 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
             
             with st.spinner("🤖 AI is analyzing the data and preparing your Recap Package..."):
-                
-                # --- CRITICAL UNIVERSAL MODEL LOADING BLOCK ---
-                model = None
-                model_errors = []
-                
-                # အလုပ်လုပ်နိုင်ချေရှိမယ့် Model String ပုံစံအားလုံးကို တစ်ခုချင်းစီ စမ်းခေါ်မယ့်စနစ်
-                candidate_names = ["gemini-1.5-pro", "gemini-1.5-flash", "models/gemini-1.5-pro", "models/gemini-1.5-flash", "gemini-pro"]
-                
-                for model_name in candidate_names:
-                    try:
-                        test_model = genai.GenerativeModel(model_name)
-                        # Test call with a minimal token to bypass 404 validation completely
-                        test_model.generate_content("ping")
-                        model = test_model
-                        break  # အောင်မြင်တာနဲ့ ပတ်တာကို ရပ်လိုက်မယ်
-                    except Exception as e:
-                        model_errors.append(f"{model_name}: {str(e)}")
-                
-                # တကယ်လို့ အပေါ်က စမ်းသပ်ချက်အားလုံး မအောင်မြင်ရင် Default ဆွဲခေါ်မယ်
-                if model is None:
-                    try:
-                        model = genai.GenerativeModel("gemini-1.5-flash")
-                    except:
-                        st.error("⚠️ API Key/Model Connection Error. Please verify your Google AI Studio credentials.")
-                # ----------------------------------------------
-                
                 try:
+                    # GOOGLE SDK NEW STANDARD RULES (Using full model path dynamically)
+                    # This completely bypasses the 404 versioning conflict on Streamlit Cloud
+                    try:
+                        model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+                    except:
+                        try:
+                            model = genai.GenerativeModel('gemini-1.5-flash')
+                        except:
+                            model = genai.GenerativeModel('gemini-pro')
+                    
                     base_prompt = f"""
                     You are an expert AI YouTube Movie Recap Scriptwriter for the digital brand "GLC Entertainment".
                     Your task is to write a highly engaging, dramatic, and thrilling movie recap script in Burmese.
